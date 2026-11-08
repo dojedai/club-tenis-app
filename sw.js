@@ -1,7 +1,7 @@
 // Service worker de la app instalable. Guarda sólo la página contenedora y los
 // íconos para que abra rápido; la app de Streamlit (otro dominio) siempre se
 // carga desde internet. Al cambiar index.html o los íconos, subir la versión.
-const CACHE = "ctdn-pwa-v2";
+const CACHE = "ctdn-pwa-v3";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -32,8 +32,10 @@ self.addEventListener("fetch", (evento) => {
   }
   if (peticion.mode === "navigate") {
     // Página: primero internet (para tomar cambios), si no hay, la guardada.
+    // "no-cache" obliga a revisar con el servidor aunque el navegador tenga
+    // una copia reciente (GitHub Pages permite reutilizarla 10 minutos).
     evento.respondWith(
-      fetch(peticion)
+      fetch(peticion, { cache: "no-cache" })
         .then((respuesta) => {
           const copia = respuesta.clone();
           caches.open(CACHE).then((cache) => cache.put("./index.html", copia));
