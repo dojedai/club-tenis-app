@@ -202,6 +202,17 @@
       mostrarAviso("Para instalar la app: toca Compartir y luego «Agregar a inicio».", false);
     }, 2500);
   }
+  // Android: Chrome a veces no ofrece instalar (cuenta sólo los toques en esta
+  // página, no dentro de la app de Streamlit). Si no lo ofrece, se explica el
+  // camino por el menú; si lo ofrece después, el aviso cambia al botón.
+  var esAndroid = /android/i.test(navigator.userAgent);
+  if (esAndroid && !instalada) {
+    setTimeout(function () {
+      if (!pedidoInstalacion) {
+        mostrarAviso("Para instalar la app: abre el menú ⋮ de Chrome y toca «Instalar app» o «Agregar a pantalla principal».", false);
+      }
+    }, 4000);
+  }
 
   // ---- Service worker (necesario para poder instalarla)
   if ("serviceWorker" in navigator) {
