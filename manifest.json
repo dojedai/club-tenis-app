@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Club de Tenis Estadio Nacional",
-  "short_name": "Tenis Estadio",
-  "description": "Partidos, escalerilla y torneos del Club de Tenis Estadio Nacional.",
+  "name": "Escalerilla, Competencias y Partidos. Club de Tenis Estadio Nacional",
+  "short_name": "Escalerilla",
+  "description": "Escalerilla, competencias y partidos del Club de Tenis Estadio Nacional.",
   "lang": "es-CL",
   "start_url": "./",
   "scope": "./",
