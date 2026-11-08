@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Club de Tenis Estadio Nacional</title>
+<meta name="description" content="Partidos, escalerilla y torneos del Club de Tenis Estadio Nacional.">
+<meta name="theme-color" content="#16224F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="iconos/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="iconos/favicon-16.png">
+<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tenis Estadio">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root { --marino: #16224F; --marino-claro: #24366E; --naranja: #F7931E; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--marino);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  /* La app de Streamlit ocupa toda la pantalla, bajo la barra de estado del teléfono */
+  #app { position: fixed; left: 0; right: 0; bottom: 0; top: env(safe-area-inset-top, 0px);
+    width: 100%; height: calc(100% - env(safe-area-inset-top, 0px)); border: 0; background: #fff; }
+  .capa { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center;
+    color: #fff; background: linear-gradient(var(--marino-claro), var(--marino)); transition: opacity .35s; }
+  .capa[hidden] { display: none; }
+  .capa.desvanecer { opacity: 0; pointer-events: none; }
+  .capa img { width: 128px; height: 128px; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .capa h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  .capa p { margin: 0; max-width: 32ch; color: #C9D2EE; font-size: 15px; line-height: 1.45; }
+  .girando { width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25);
+    border-top-color: var(--naranja); animation: girar .9s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .girando { animation-duration: 3s; } }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 18px;
+    background: var(--naranja); color: #16224F; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  /* Aviso para instalar la app */
+  #aviso { position: fixed; z-index: 3; left: 12px; right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 14px; background: var(--marino); color: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 14px; line-height: 1.4; }
+  #aviso[hidden] { display: none; }
+  #aviso img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+  #aviso span { flex: 1; min-width: 0; }
+  #aviso .cerrar { background: transparent; color: #C9D2EE; padding: 6px 8px; font-size: 18px; line-height: 1; }
+</style>
+</head>
+<body>
+<iframe id="app" title="Club de Tenis Estadio Nacional" allow="clipboard-write; fullscreen"></iframe>
+
+<div id="carga" class="capa" role="status" aria-live="polite">
+  <img src="iconos/icono-192.png" alt="">
+  <h1>Club de Tenis Estadio Nacional</h1>
+  <div class="girando" aria-hidden="true"></div>
+  <p id="carga-texto">Cargando…</p>
+</div>
+
+<div id="sin-red" class="capa" hidden>
+  <img src="iconos/icono-192.png" alt="">
+  <h1>Sin conexión a internet</h1>
+  <p>La app necesita internet para mostrar partidos, escalerilla y torneos. Revisa tu conexión e inténtalo de nuevo.</p>
+  <button id="reintentar" type="button">Reintentar</button>
+</div>
+
+<div id="aviso" hidden>
+  <img src="iconos/icono-192.png" alt="">
+  <span id="aviso-texto"></span>
+  <button id="instalar" type="button" hidden>Instalar</button>
+  <button class="cerrar" id="cerrar-aviso" type="button" aria-label="Cerrar aviso">✕</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Dirección de la app de Streamlit (sólo se le envía el token a este dominio).
+  var APP_URL = "https://clubtenisen.streamlit.app/";
+  var APP_ORIGEN = new URL(APP_URL).origin;
+  var CLAVE_TOKEN = "ctdn_sesion";
+  var CLAVE_AVISO = "ctdn_aviso_instalar_cerrado";
+
+  var iframe = document.getElementById("app");
+  var carga = document.getElementById("carga");
+  var sinRed = document.getElementById("sin-red");
+  var ultimaCargaConToken = 0;
+
+  function leer(clave) {
+    try { return localStorage.getItem(clave); } catch (e) { return null; }
+  }
+  function guardar(clave, valor) {
+    try {
+      if (valor) { localStorage.setItem(clave, valor); } else { localStorage.removeItem(clave); }
+    } catch (e) {}
+  }
+
+  // ---- Cargar la app: embed=true oculta el menú de Streamlit; pwa=1 activa
+  // ---- la sesión recordada en la app; rt lleva el token guardado.
+  function cargarApp() {
+    var url = new URL(APP_URL);
+    new URLSearchParams(location.search).forEach(function (valor, clave) {
+      url.searchParams.set(clave, valor);
+    });
+    url.searchParams.set("embed", "true");
+    url.searchParams.set("pwa", "1");
+    var token = leer(CLAVE_TOKEN);
+    if (token) {
+      url.searchParams.set("rt", token);
+      ultimaCargaConToken = Date.now();
+    } else {
+      url.searchParams.delete("rt");
+    }
+    carga.hidden = false;
+    carga.classList.remove("desvanecer");
+    document.getElementById("carga-texto").textContent = "Cargando…";
+    iframe.src = url.toString();
+    // Si Streamlit tarda (app "dormida"), igual se muestra su pantalla.
+    setTimeout(function () {
+      document.getElementById("carga-texto").textContent =
+        "Despertando la app, puede tardar unos segundos…";
+    }, 6000);
+    setTimeout(ocultarCarga, 15000);
+  }
+
+  function ocultarCarga() {
+    carga.classList.add("desvanecer");
+    setTimeout(function () { carga.hidden = true; }, 400);
+  }
+  iframe.addEventListener("load", function () { setTimeout(ocultarCarga, 500); });
+
+  // ---- Mensajes de la app de Streamlit (autenticacion.py)
+  window.addEventListener("message", function (evento) {
+    if (evento.origin !== APP_ORIGEN) { return; }
+    var datos = evento.data;
+    if (!datos || typeof datos !== "object") { return; }
+    if (datos.tipo === "ctdn-sesion") {
+      // Token nuevo (Supabase lo rota) o null al cerrar sesión.
+      guardar(CLAVE_TOKEN, typeof datos.token === "string" ? datos.token : null);
+    } else if (datos.tipo === "ctdn-pedir-token") {
+      // La página de Streamlit se recargó sin token: se vuelve a cargar con él.
+      if (leer(CLAVE_TOKEN) && Date.now() - ultimaCargaConToken > 15000) {
+        cargarApp();
+      }
+    }
+  });
+
+  // ---- Sin conexión
+  function revisarConexion() {
+    if (navigator.onLine) { return true; }
+    sinRed.hidden = false;
+    carga.hidden = true;
+    return false;
+  }
+  document.getElementById("reintentar").addEventListener("click", function () {
+    if (navigator.onLine) { sinRed.hidden = true; cargarApp(); }
+  });
+  window.addEventListener("online", function () {
+    if (!sinRed.hidden) { sinRed.hidden = true; cargarApp(); }
+  });
+  window.addEventListener("offline", revisarConexion);
+
+  // ---- Aviso para instalar
+  var aviso = document.getElementById("aviso");
+  var avisoTexto = document.getElementById("aviso-texto");
+  var botonInstalar = document.getElementById("instalar");
+  var instalada = window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+  var esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var pedidoInstalacion = null;
+
+  function mostrarAviso(texto, conBoton) {
+    if (instalada || leer(CLAVE_AVISO)) { return; }
+    avisoTexto.textContent = texto;
+    botonInstalar.hidden = !conBoton;
+    aviso.hidden = false;
+  }
+  document.getElementById("cerrar-aviso").addEventListener("click", function () {
+    aviso.hidden = true;
+    guardar(CLAVE_AVISO, "1");
+  });
+  // Android / Chrome / Edge: aviso propio con botón "Instalar".
+  window.addEventListener("beforeinstallprompt", function (evento) {
+    evento.preventDefault();
+    pedidoInstalacion = evento;
+    mostrarAviso("Instala la app del club en tu teléfono.", true);
+  });
+  botonInstalar.addEventListener("click", function () {
+    if (!pedidoInstalacion) { return; }
+    pedidoInstalacion.prompt();
+    pedidoInstalacion.userChoice.finally(function () {
+      pedidoInstalacion = null;
+      aviso.hidden = true;
+    });
+  });
+  window.addEventListener("appinstalled", function () { aviso.hidden = true; });
+  // iPhone / iPad: no hay aviso automático, se explica cómo hacerlo.
+  if (esIOS && !instalada) {
+    setTimeout(function () {
+      mostrarAviso("Para instalar la app: toca Compartir y luego «Agregar a inicio».", false);
+    }, 2500);
+  }
+
+  // ---- Service worker (necesario para poder instalarla)
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+
+  if (revisarConexion()) { cargarApp(); }
+})();
+</script>
+</body>
+</html>

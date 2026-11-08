@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+  <linearGradient id="fondo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#24366E"/><stop offset="1" stop-color="#121D48"/></linearGradient>
+  <radialGradient id="naranja" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#FFD24A"/><stop offset="0.55" stop-color="#F7931E"/><stop offset="1" stop-color="#DD6A0A"/></radialGradient>
+  <radialGradient id="anillo" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#5B8FD0"/><stop offset="0.6" stop-color="#2D5799"/><stop offset="1" stop-color="#18336A"/></radialGradient>
+  <clipPath id="cuerdas"><ellipse cx="0" cy="-95" rx="54" ry="72"/></clipPath>
+  <g id="raqueta">
+    <g clip-path="url(#cuerdas)" stroke="#fff" stroke-width="3.5" opacity="0.8">
+      <path d="M-48 -180V-10M-36 -180V-10M-24 -180V-10M-12 -180V-10M0 -180V-10M12 -180V-10M24 -180V-10M36 -180V-10M48 -180V-10"/>
+      <path d="M-60 -155H60M-60 -143H60M-60 -131H60M-60 -119H60M-60 -107H60M-60 -95H60M-60 -83H60M-60 -71H60M-60 -59H60M-60 -47H60M-60 -35H60"/>
+    </g>
+    <ellipse cx="0" cy="-95" rx="62" ry="80" fill="none" stroke="#fff" stroke-width="13"/>
+    <path d="M-33 -30L-9 45M33 -30L9 45" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+    <rect x="-12" y="40" width="24" height="115" rx="9" fill="#fff"/>
+  </g>
+  <path id="arcoSup" d="M-39.5 0A39.5 39.5 0 0 1 39.5 0"/>
+  <path id="arcoInf" d="M-46.5 0A46.5 46.5 0 0 0 46.5 0"/>
+  <!-- Círculo del logo: pelota y raquetas cruzadas -->
+  <g id="escudo">
+    <circle r="50" fill="url(#naranja)"/>
+    <use href="#raqueta" xlink:href="#raqueta" transform="translate(-2 8) rotate(-32) scale(0.27) translate(0 -20)"/>
+    <use href="#raqueta" xlink:href="#raqueta" transform="translate(2 8) rotate(32) scale(0.27) translate(0 -20)"/>
+  </g>
+  <!-- Insignia completa: anillo azul con el nombre del club -->
+  <g id="insignia">
+    <circle r="50" fill="url(#anillo)"/>
+    <circle r="49" fill="none" stroke="#9DBCE6" stroke-width="1" opacity="0.6"/>
+    <circle r="35" fill="url(#naranja)"/>
+    <use href="#raqueta" xlink:href="#raqueta" transform="translate(-1 5) rotate(-34) scale(0.2) translate(0 -20)"/>
+    <use href="#raqueta" xlink:href="#raqueta" transform="translate(1 5) rotate(34) scale(0.2) translate(0 -20)"/>
+    <g font-family="Arial Narrow, Roboto Condensed, Arial, sans-serif" font-weight="700" font-size="9.2" fill="#fff" letter-spacing="0.3">
+      <text text-anchor="middle"><textPath href="#arcoSup" xlink:href="#arcoSup" startOffset="50%">CLUB DE TENIS</textPath></text>
+      <text text-anchor="middle"><textPath href="#arcoInf" xlink:href="#arcoInf" startOffset="50%">ESTADIO NACIONAL</textPath></text>
+    </g>
+  </g>
+  <g id="copa">
+    <path d="M168 168C112 168 108 262 178 272M344 168C400 168 404 262 334 272" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+    <path d="M238 296H274L268 350H244Z" fill="#fff"/>
+    <rect x="198" y="346" width="116" height="26" rx="6" fill="#fff"/>
+    <rect x="176" y="372" width="160" height="34" rx="8" fill="#fff"/>
+    <rect x="226" y="381" width="60" height="16" rx="4" fill="#F7931E"/>
+    <use href="#insignia" xlink:href="#insignia" transform="translate(256 206) scale(1.9)"/>
+  </g>
+</defs>
+<rect width="512" height="512" fill="url(#fondo)"/>
+<g transform="translate(256 256) scale(1.08) translate(-256 -256)">
+<g transform="translate(101.9 414.1)">
+  <path d="M0 0V-38.4H64.0V-76.8H128.0V-115.2H294.4V0Z" fill="#fff"/>
+  <path d="M0 -38.4H64.0M64.0 -76.8H128.0M128.0 -115.2H294.4" stroke="#F7931E" stroke-width="8" stroke-linecap="round"/>
+  <use href="#copa" xlink:href="#copa" transform="translate(211.2 -121.2) scale(0.66) translate(-256 -406)"/>
+</g>
+</g>
+</svg>
