@@ -1,6 +1,7 @@
 // Service worker de la app instalable. Guarda sólo la página contenedora y los
 // íconos para que abra rápido; la app de Streamlit (otro dominio) siempre se
-// carga desde internet. Al cambiar index.html o los íconos, subir la versión.
+// carga desde internet. Al cambiar index.html o los íconos, subir la versión
+// (y si cambia manifest.json, también el ?v= del enlace al manifest en index.html).
 const CACHE = "ctdn-pwa-v4";
 const ARCHIVOS = [
   "./",
