@@ -78,6 +78,12 @@
 
   // Dirección de la app de Streamlit (sólo se le envía el token a este dominio).
   var APP_URL = "https://clubtenisen.streamlit.app/";
+  // La app se abre sin el marco de Streamlit Cloud (ruta interna "~/+/"): ese
+  // marco no ajusta su alto a la pantalla y, con el teléfono girado, dejaba la
+  // app de 150 px y un gran espacio en blanco. Si la app no avisa que cargó
+  // (p. ej. está dormida), se usa la página normal, que permite despertarla.
+  var APP_URL_DIRECTA = APP_URL + "~/+/";
+  var ESPERA_AVISO_MS = 20000;
   var APP_ORIGEN = new URL(APP_URL).origin;
   var CLAVE_TOKEN = "ctdn_sesion";
   var CLAVE_AVISO = "ctdn_aviso_instalar_cerrado";
@@ -86,6 +92,9 @@
   var carga = document.getElementById("carga");
   var sinRed = document.getElementById("sin-red");
   var ultimaCargaConToken = 0;
+  var cargaDirecta = true;   // false tras usar el respaldo (página normal)
+  var appLista = false;      // la app avisó que cargó
+  var intento = 0;           // invalida los temporizadores de cargas anteriores
 
   function leer(clave) {
     try { return localStorage.getItem(clave); } catch (e) { return null; }
@@ -99,7 +108,9 @@
   // ---- Cargar la app: embed=true oculta el menú de Streamlit; pwa=1 activa
   // ---- la sesión recordada en la app; rt lleva el token guardado.
   function cargarApp() {
-    var url = new URL(APP_URL);
+    var url = new URL(cargaDirecta ? APP_URL_DIRECTA : APP_URL);
+    var esteIntento = ++intento;
+    appLista = false;
     new URLSearchParams(location.search).forEach(function (valor, clave) {
       url.searchParams.set(clave, valor);
     });
@@ -118,24 +129,41 @@
     iframe.src = url.toString();
     // Si Streamlit tarda (app "dormida"), igual se muestra su pantalla.
     setTimeout(function () {
+      if (esteIntento !== intento || appLista) { return; }
       document.getElementById("carga-texto").textContent =
         "Despertando la app, puede tardar unos segundos…";
     }, 6000);
-    setTimeout(ocultarCarga, 15000);
+    if (cargaDirecta) {
+      // Respaldo: sin aviso de la app, se abre la página normal de Streamlit.
+      setTimeout(function () {
+        if (esteIntento !== intento || appLista) { return; }
+        cargaDirecta = false;
+        cargarApp();
+      }, ESPERA_AVISO_MS);
+    } else {
+      setTimeout(function () { if (esteIntento === intento) { ocultarCarga(); } }, 15000);
+    }
   }
 
   function ocultarCarga() {
     carga.classList.add("desvanecer");
     setTimeout(function () { carga.hidden = true; }, 400);
   }
-  iframe.addEventListener("load", function () { setTimeout(ocultarCarga, 500); });
+  // En la carga directa la pantalla de carga se quita con el aviso de la app
+  // (si está dormida, la página que llega no sirve y no se muestra).
+  iframe.addEventListener("load", function () {
+    if (!cargaDirecta) { setTimeout(ocultarCarga, 500); }
+  });
 
   // ---- Mensajes de la app de Streamlit (autenticacion.py)
   window.addEventListener("message", function (evento) {
     if (evento.origin !== APP_ORIGEN) { return; }
     var datos = evento.data;
     if (!datos || typeof datos !== "object") { return; }
-    if (datos.tipo === "ctdn-sesion") {
+    if (datos.tipo === "ctdn-lista") {
+      // La app cargó: se quita la pantalla de carga y se anula el respaldo.
+      if (!appLista) { appLista = true; ocultarCarga(); }
+    } else if (datos.tipo === "ctdn-sesion") {
       // Token nuevo (Supabase lo rota) o null al cerrar sesión.
       guardar(CLAVE_TOKEN, typeof datos.token === "string" ? datos.token : null);
     } else if (datos.tipo === "ctdn-pedir-token") {

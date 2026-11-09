@@ -2,7 +2,7 @@
 // íconos para que abra rápido; la app de Streamlit (otro dominio) siempre se
 // carga desde internet. Al cambiar index.html o los íconos, subir la versión
 // (y si cambia manifest.json, también el ?v= del enlace al manifest en index.html).
-const CACHE = "ctdn-pwa-v4";
+const CACHE = "ctdn-pwa-v5";
 const ARCHIVOS = [
   "./",
   "./index.html",
