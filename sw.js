@@ -2,7 +2,7 @@
 // íconos para que abra rápido; la app de Streamlit (otro dominio) siempre se
 // carga desde internet. Al cambiar index.html o los íconos, subir la versión
 // (y si cambia manifest.json, también el ?v= del enlace al manifest en index.html).
-const CACHE = "ctdn-pwa-v6";
+const CACHE = "ctdn-pwa-v7";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const ARCHIVOS = [
   "./iconos/icono-512.png",
   "./iconos/apple-touch-icon.png",
   "./iconos/favicon-32.png",
+  "./iconos/insignia-notificacion.png",
 ];
 
 self.addEventListener("install", (evento) => {
@@ -59,7 +60,7 @@ self.addEventListener("push", (evento) => {
     self.registration.showNotification(datos.titulo || "Club de Tenis", {
       body: datos.cuerpo || "",
       icon: "iconos/icono-192.png",
-      badge: "iconos/favicon-32.png",
+      badge: "iconos/insignia-notificacion.png",
       tag: datos.etiqueta || undefined,
       renotify: !!datos.etiqueta,
       lang: "es",

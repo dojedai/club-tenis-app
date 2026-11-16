@@ -7,7 +7,9 @@ del club publicada en <https://clubtenisen.streamlit.app/>.
 - `manifest.json`: nombre, colores e íconos de la app.
 - `sw.js`: service worker (necesario para instalarla). Al cambiar archivos, subir la versión `CACHE`.
   También muestra las notificaciones push y, al tocarlas, abre la app.
-- `iconos/`: íconos en todos los tamaños.
+- `iconos/`: íconos en todos los tamaños. `insignia-notificacion.png` es la silueta
+  blanca sobre fondo transparente que Android muestra en la barra de estado
+  (si se usa un ícono opaco, aparece como un cuadrado blanco).
 
 Se publica con GitHub Pages (Settings → Pages → Deploy from a branch → `main` / root).
 

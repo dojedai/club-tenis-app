@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <defs>
+    <mask id="m">
+      <rect width="96" height="96" fill="#fff"/>
+      <!-- costuras de pelota de tenis caladas en la copa -->
+      <path d="M36 16 C44 26 44 40 36 50 M60 16 C52 26 52 40 60 50" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <g fill="#fff" mask="url(#m)">
+    <path d="M26 10 H70 V34 C70 49 60 58 48 58 C36 58 26 49 26 34 Z"/>
+    <path d="M26 16 H15 C13 34 20 42 30 45 L31 39 C24 36 20 31 21 22 H26 Z"/>
+    <path d="M70 16 H81 C83 34 76 42 66 45 L65 39 C72 36 76 31 75 22 H70 Z"/>
+    <rect x="43" y="56" width="10" height="12"/>
+    <rect x="35" y="67" width="26" height="7" rx="2"/>
+    <rect x="27" y="76" width="42" height="10" rx="3"/>
+  </g>
+</svg>
