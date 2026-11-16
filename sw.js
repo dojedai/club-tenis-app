@@ -2,7 +2,7 @@
 // íconos para que abra rápido; la app de Streamlit (otro dominio) siempre se
 // carga desde internet. Al cambiar index.html o los íconos, subir la versión
 // (y si cambia manifest.json, también el ?v= del enlace al manifest en index.html).
-const CACHE = "ctdn-pwa-v5";
+const CACHE = "ctdn-pwa-v6";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -47,4 +47,35 @@ self.addEventListener("fetch", (evento) => {
     return;
   }
   evento.respondWith(caches.match(peticion).then((guardada) => guardada || fetch(peticion)));
+});
+
+// ---- Notificaciones push (las envía la app de Streamlit, notificaciones_push.py)
+self.addEventListener("push", (evento) => {
+  let datos = {};
+  try { datos = evento.data ? evento.data.json() : {}; } catch (e) {
+    datos = { cuerpo: evento.data ? evento.data.text() : "" };
+  }
+  evento.waitUntil(
+    self.registration.showNotification(datos.titulo || "Club de Tenis", {
+      body: datos.cuerpo || "",
+      icon: "iconos/icono-192.png",
+      badge: "iconos/favicon-32.png",
+      tag: datos.etiqueta || undefined,
+      renotify: !!datos.etiqueta,
+      lang: "es",
+    })
+  );
+});
+
+// Al tocar la notificación se abre (o se trae al frente) la app.
+self.addEventListener("notificationclick", (evento) => {
+  evento.notification.close();
+  evento.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((ventanas) => {
+      for (const ventana of ventanas) {
+        if ("focus" in ventana) { return ventana.focus(); }
+      }
+      return self.clients.openWindow("./");
+    })
+  );
 });

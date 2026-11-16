@@ -37,14 +37,14 @@
     background: var(--naranja); color: #16224F; cursor: pointer; }
   button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   /* Aviso para instalar la app */
-  #aviso { position: fixed; z-index: 3; left: 12px; right: 12px;
+  .aviso { position: fixed; z-index: 3; left: 12px; right: 12px;
     bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 12px;
     padding: 12px 14px; border-radius: 14px; background: var(--marino); color: #fff;
     box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 14px; line-height: 1.4; }
-  #aviso[hidden] { display: none; }
-  #aviso img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
-  #aviso span { flex: 1; min-width: 0; }
-  #aviso .cerrar { background: transparent; color: #C9D2EE; padding: 6px 8px; font-size: 18px; line-height: 1; }
+  .aviso[hidden] { display: none; }
+  .aviso img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+  .aviso span { flex: 1; min-width: 0; }
+  .aviso .cerrar { background: transparent; color: #C9D2EE; padding: 6px 8px; font-size: 18px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -65,11 +65,18 @@
   <button id="reintentar" type="button">Reintentar</button>
 </div>
 
-<div id="aviso" hidden>
+<div id="aviso" class="aviso" hidden>
   <img src="iconos/icono-192.png" alt="">
   <span id="aviso-texto"></span>
   <button id="instalar" type="button" hidden>Instalar</button>
   <button class="cerrar" id="cerrar-aviso" type="button" aria-label="Cerrar aviso">✕</button>
+</div>
+
+<div id="aviso-push" class="aviso" role="dialog" aria-label="Notificaciones" hidden>
+  <img src="iconos/icono-192.png" alt="">
+  <span>Recibe en este teléfono los avisos de desafíos, invitaciones y resultados.</span>
+  <button id="activar-push" type="button">Permitir</button>
+  <button class="cerrar" id="cerrar-push" type="button" aria-label="Ahora no">✕</button>
 </div>
 
 <script>
@@ -159,13 +166,15 @@
   window.addEventListener("message", function (evento) {
     if (evento.origin !== APP_ORIGEN) { return; }
     var datos = evento.data;
-    if (!datos || typeof datos !== "object") { return; }
+    if (!datos || typeof datos !== "object" || typeof datos.tipo !== "string") { return; }
     if (datos.tipo === "ctdn-lista") {
       // La app cargó: se quita la pantalla de carga y se anula el respaldo.
       if (!appLista) { appLista = true; ocultarCarga(); }
     } else if (datos.tipo === "ctdn-sesion") {
       // Token nuevo (Supabase lo rota) o null al cerrar sesión.
       guardar(CLAVE_TOKEN, typeof datos.token === "string" ? datos.token : null);
+    } else if (datos.tipo.indexOf("ctdn-push-") === 0) {
+      recibirOrdenPush(datos, evento.source);
     } else if (datos.tipo === "ctdn-pedir-token") {
       // La página de Streamlit se recargó sin token: se vuelve a cargar con él.
       if (leer(CLAVE_TOKEN) && Date.now() - ultimaCargaConToken > 15000) {
@@ -241,6 +250,118 @@
       }
     }, 4000);
   }
+
+  // ---- Notificaciones push. La app de Streamlit (notificaciones_push.py)
+  // ---- pregunta el estado y da las órdenes; aquí se pide el permiso (debe
+  // ---- ser con un toque en esta página, no dentro de la app) y se crea la
+  // ---- suscripción, que se le devuelve a la app para que la guarde.
+  var CLAVE_PUSH_APAGADO = "ctdn_push_apagado";
+  var avisoPush = document.getElementById("aviso-push");
+  var pushSoportado = "serviceWorker" in navigator && "PushManager" in window &&
+    "Notification" in window;
+  var ventanaApp = null;   // la página de Streamlit que habló por última vez
+  var clavePush = null;    // clave pública VAPID (la entrega la app)
+  var ordenPush = null;    // orden de la app que se está atendiendo
+
+  function dispositivo() {
+    if (esIOS) { return "iPhone / iPad"; }
+    if (esAndroid) { return "Android"; }
+    return "Computador";
+  }
+  function claveBytes(base64) {
+    var relleno = "====".slice((base64.length % 4) || 4);
+    var binario = atob((base64 + relleno).replace(/-/g, "+").replace(/_/g, "/"));
+    var bytes = new Uint8Array(binario.length);
+    for (var i = 0; i < binario.length; i++) { bytes[i] = binario.charCodeAt(i); }
+    return bytes;
+  }
+  function mismaClave(suscripcion) {
+    try {
+      var a = new Uint8Array(suscripcion.options.applicationServerKey);
+      var b = claveBytes(clavePush);
+      if (a.length !== b.length) { return false; }
+      for (var i = 0; i < a.length; i++) { if (a[i] !== b[i]) { return false; } }
+      return true;
+    } catch (e) { return true; }
+  }
+  function responderPush(extra) {
+    if (!ventanaApp) { return; }
+    var mensaje = {
+      tipo: "ctdn-push", soportado: pushSoportado, instalada: instalada,
+      dispositivo: dispositivo(), orden: ordenPush, suscripcion: null,
+      permiso: pushSoportado ? Notification.permission : null
+    };
+    for (var clave in (extra || {})) { mensaje[clave] = extra[clave]; }
+    try { ventanaApp.postMessage(mensaje, APP_ORIGEN); } catch (e) {}
+  }
+  function fallaPush(error) {
+    responderPush({ error: String((error && error.message) || error) });
+  }
+  function suscribir(registro) {
+    return registro.pushManager.subscribe({
+      userVisibleOnly: true, applicationServerKey: claveBytes(clavePush)
+    });
+  }
+  function informarEstadoPush() {
+    if (!pushSoportado) { responderPush(); return; }
+    navigator.serviceWorker.ready.then(function (registro) {
+      return registro.pushManager.getSubscription().then(function (actual) {
+        var apagado = leer(CLAVE_PUSH_APAGADO);
+        if (actual && clavePush && !mismaClave(actual)) {
+          // Cambió la clave del club: se renueva la suscripción.
+          return actual.unsubscribe().then(function () {
+            return apagado ? null : suscribir(registro);
+          });
+        }
+        if (!actual && !apagado && clavePush && Notification.permission === "granted") {
+          return suscribir(registro);   // venció: se renueva sola
+        }
+        return actual;
+      });
+    }).then(function (suscripcion) {
+      responderPush({ suscripcion: suscripcion ? suscripcion.toJSON() : null });
+    }).catch(fallaPush);
+  }
+  function activarPush() {
+    avisoPush.hidden = true;
+    Notification.requestPermission().then(function (permiso) {
+      if (permiso !== "granted") { responderPush(); return null; }
+      guardar(CLAVE_PUSH_APAGADO, null);
+      return navigator.serviceWorker.ready.then(suscribir).then(function (suscripcion) {
+        responderPush({ suscripcion: suscripcion.toJSON() });
+      });
+    }).catch(fallaPush);
+  }
+  function desactivarPush() {
+    guardar(CLAVE_PUSH_APAGADO, "1");
+    if (!pushSoportado) { responderPush(); return; }
+    navigator.serviceWorker.ready.then(function (registro) {
+      return registro.pushManager.getSubscription();
+    }).then(function (actual) {
+      return actual ? actual.unsubscribe() : null;
+    }).then(function () { responderPush(); }, fallaPush);
+  }
+  function recibirOrdenPush(datos, ventana) {
+    ventanaApp = ventana;
+    if (typeof datos.clave === "string") { clavePush = datos.clave; }
+    ordenPush = datos.orden || null;
+    if (datos.tipo === "ctdn-push-estado") {
+      informarEstadoPush();
+    } else if (datos.tipo === "ctdn-push-activar") {
+      if (!pushSoportado || !clavePush) { responderPush(); return; }
+      if (Notification.permission === "denied") { responderPush(); return; }
+      aviso.hidden = true;
+      avisoPush.hidden = false;
+      document.getElementById("activar-push").focus();
+    } else if (datos.tipo === "ctdn-push-desactivar") {
+      desactivarPush();
+    }
+  }
+  document.getElementById("activar-push").addEventListener("click", activarPush);
+  document.getElementById("cerrar-push").addEventListener("click", function () {
+    avisoPush.hidden = true;
+    responderPush();
+  });
 
   // ---- Service worker (necesario para poder instalarla)
   if ("serviceWorker" in navigator) {
